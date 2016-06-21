@@ -1,0 +1,23 @@
+USERS_INSTITUTIONS_MAP = {
+    "125141":"illinois",
+    "125490":"iowa",
+    "61089":"iowa",
+    "155921":"mich",
+    "159879":"mich",
+    "35762":"minn",
+    "126235":"minn",
+    "60836":"minn",
+    "41454":"msu",
+    "125715":"msu",
+    "60834":"psu",
+    "1082157":"psu",
+    "231539":"psu",
+    "1356096":"psu",
+    "159323":"purdue",
+    "39829":"purdue",
+    "66840":"umd",
+    "527597":"umd",
+    "363804":"umn",
+    "125094":"wisc",
+    "1":"minn" #this is really just for testing
+}
