@@ -82,7 +82,7 @@ Since we know that the institution for all of the Minn. Geo. Commons is Minnesot
 
 To publish the same category to Solr, under the collection name "MN Geospatial Commons":
 ```
-./csw-to-geoblacklight.py -cat "Minnesota Geospatial Commons" -c "MN Geospatial Commons" -j -pi minn
+./csw-to-geoblacklight.py -cat "Minnesota Geospatial Commons" -c "MN Geospatial Commons" -pi minn
 ```
 
 To update a single record (useful when making minor fixes for individual records), you need to provide is the uuid:
