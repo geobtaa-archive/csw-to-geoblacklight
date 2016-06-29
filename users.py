@@ -1,5 +1,7 @@
+#see https://geonet.lib.umn.edu/geonetwork/srv/eng/admin.user.list
+#for the source of this info
 USERS_INSTITUTIONS_MAP = {
-    "125141":"illinois",
+    "125141":"illinois", #
     "125490":"iowa",
     "61089":"iowa",
     "155921":"mich",
@@ -19,5 +21,25 @@ USERS_INSTITUTIONS_MAP = {
     "527597":"umd",
     "363804":"umn",
     "125094":"wisc",
-    "1":"minn" #this is really just for testing
+    "1":"minn",#this is really just for testing
+    "Amanda":"msu",
+    "Bria":"umd",
+    "Catherine":"iowa",
+    "Kevin":"minn",
+    "Jaime":"wisc",
+    "James":"illinois",
+    "Kelley":"umd",
+    "Nicole":"purdue",
+    "Shirley":"purdue",
+    "Linda":"psu",
+    "Lisa":"umd",
+    "Karen":"minn",
+    "Ryan":"minn",
+    "Mara":"mich",
+    "Nathan":"psu",
+    "Paige":"psu",
+    "Rob":"iowa",
+    "Sonia":"psu",
+    "Tim":"mich",
+    "Kathleen":"msu"
 }

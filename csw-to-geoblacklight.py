@@ -9,7 +9,8 @@ import pdb
 import pprint
 import time
 import logging
-
+import fnmatch
+import urllib
 
 # non-standard libraries. install via `pip install -r requirements.txt`
 from lxml import etree
@@ -84,7 +85,9 @@ class SolrInterface(object):
 
 class CSWToGeoBlacklight(object):
 
-    def __init__(self, SOLR_URL, SOLR_USERNAME, SOLR_PASSWORD, CSW_URL, CSW_USER, CSW_PASSWORD, USERS_INSTITUTIONS_MAP, TO_CSV=False, max_records=None):
+    def __init__(self, SOLR_URL, SOLR_USERNAME, SOLR_PASSWORD, CSW_URL, CSW_USER,
+        CSW_PASSWORD, USERS_INSTITUTIONS_MAP, INST=None, TO_CSV=False, TO_JSON=False, TO_XML=False,
+        max_records=None, COLLECTION=None, RECURSIVE=False):
 
         if SOLR_USERNAME and SOLR_PASSWORD:
             SOLR_URL = SOLR_URL.format(username=SOLR_USERNAME,password=SOLR_PASSWORD)
@@ -94,15 +97,26 @@ class CSWToGeoBlacklight(object):
         self.transform = etree.XSLT(etree.parse(self.XSLT_PATH))
         self.namespaces = self.get_namespaces()
         self.to_csv = TO_CSV
+        self.to_json = TO_JSON
+        self.to_xml = TO_XML
+        self.inst = INST
         self.records = OrderedDict()
         self.record_dicts = []
         self.max_records = max_records
         self.gn_session = None
+
+        if COLLECTION:
+            self.collection = '"'+COLLECTION+'"'
+        else:
+            self.collection = None
         self.CSW_USER = CSW_USER
         self.CSW_PASSWORD = CSW_PASSWORD
         self.CSW_URL = CSW_URL
+        self.RECURSIVE = RECURSIVE
         self.GEONETWORK_BASE = CSW_URL[:CSW_URL.find("/geonetwork/")]
-        self.GET_INST_URL = self.GEONETWORK_BASE + "/geonetwork/srv/eng/q?_content_type=json&fast=index&_uuid="
+        self.GEONETWORK_SEARCH_BASE = self.GEONETWORK_BASE + "/geonetwork/srv/eng/q?_content_type=json"
+        self.GEONETWORK_BY_CAT = self.GEONETWORK_SEARCH_BASE + "&fast=index&_cat={category}"
+        self.GET_INST_URL = self.GEONETWORK_SEARCH_BASE + "&fast=index&_uuid={uuid}"
         self.CSV_FIELDNAMES = ["layer_geom_type_s",
             "layer_modified_dt",
             "solr_geom",
@@ -157,6 +171,23 @@ class CSWToGeoBlacklight(object):
         # ns[None] = n.get_namespace("gmd")
         return ns
 
+    def get_files_from_path(self, start_path, criteria="*"):
+        files = []
+
+        if self.RECURSIVE:
+            for path, folder, ffiles in os.walk(start_path):
+                files = files + [os.path.join(path, i) for i in fnmatch.filter(ffiles, criteria)]
+        else:
+            files = glob(os.path.join(start_path, criteria))
+        return files
+
+    def add_json(self, path_to_json):
+        files = self.get_files_from_path(path_to_json, criteria="*.json")
+        log.debug(files)
+        dicts = []
+        for i in files:
+            dicts.append(self.solr.json_to_dict(i))
+        self.solr.add_dict_list_to_solr(dicts)
 
     def delete_records_institution(self, inst):
         """
@@ -176,12 +207,24 @@ class CSWToGeoBlacklight(object):
             for r in records:
                 writer.writerow(r)
 
+    def get_records_by_ids(self, ids):
+        recordcount = 0
+        for group in self.chunker(ids, 100):
+            log.debug("Requested {n} CSW records so far".format(n=str(recordcount)))
+            recordcount = recordcount + 100
+            self.csw_i.getrecordbyid(id=group,
+                outputschema="http://www.isotc211.org/2005/gmd")
+            self.records.update(self.csw_i.records)
 
-    def get_records(self, start_pos=0):
+    def get_records(self, start_pos=0, ids=None):
+
+        if ids:
+            self.get_records_by_ids(ids)
+            return
 
         self.csw_i.getrecords2(esn="full",
             startposition=start_pos,
-            maxrecords=50,
+            maxrecords=100,
             outputschema="http://www.isotc211.org/2005/gmd")
 
         log.debug(self.csw_i.results)
@@ -203,12 +246,16 @@ class CSWToGeoBlacklight(object):
             self.csw_i = csw.CatalogueServiceWeb(url)
 
     def create_geonetwork_session(self):
+        """
+        Log into GeoNetwork. Used for non-CSW actions, like searching by
+        category or fetching the owner of a record.
+        """
         BASE_URL = self.GEONETWORK_BASE+"/srv/eng/"
         LOGIN =  self.GEONETWORK_BASE+"/j_spring_security_check"
 
         self.gn_session = requests.Session()
         self.gn_session.auth = (self.CSW_USER, self.CSW_PASSWORD)
-        login_r = self.gn_session.post(LOGIN, auth=(self.CSW_USER, self.CSW_PASSWORD))
+        login_r = self.gn_session.post(LOGIN)
 
     def destroy_geonetwork_session(self):
         LOGOUT = self.GEONETWORK_BASE+"/j_spring_security_logout"
@@ -218,7 +265,7 @@ class CSWToGeoBlacklight(object):
         if not self.gn_session:
             self.create_geonetwork_session()
 
-        url = self.GET_INST_URL+record_uuid
+        url = self.GET_INST_URL.format(uuid=record_uuid)
         re = self.gn_session.get(url)
         time.sleep(1)
         js = re.json()
@@ -233,7 +280,12 @@ class CSWToGeoBlacklight(object):
                 return "minn"
 
 
-    def transform_records(self, uuids_and_insts=None, inst=None):
+    def transform_records(self, uuids_and_insts=None):
+        """
+        Transforms a set of ISO19139 records into GeoBlacklight JSON.
+        Uses iso2geoBL.xsl to perform the transformation.
+        """
+        inst = self.inst
         for r in self.records:
             if not inst and not uuids_and_insts:
                 inst = self.get_inst_for_record(r)
@@ -243,7 +295,15 @@ class CSWToGeoBlacklight(object):
             rec = rec.replace("\n","")
             root = etree.fromstring(rec)
             record_etree = etree.ElementTree(root)
-            result = self.transform(record_etree, institution=self.institutions[inst])
+
+            if self.collection:
+                result = self.transform(record_etree,
+                    institution=self.institutions[inst],
+                    collection=self.collection)
+            else:
+                result = self.transform(record_etree,
+                    institution=self.institutions[inst])
+
             result_u = unicode(result)
             try:
                 result_dict = demjson.decode(result_u)
@@ -253,42 +313,41 @@ class CSWToGeoBlacklight(object):
                 log.error(result_u)
             self.record_dicts.append(result_dict)
 
+
     def records_by_institution(self, inst):
-        # s.delete_query("dct_provenance_s:" + institutions[inst])
+        """
+        Requests all records for a given institution. Expects a GeoNetwork virtual
+        CSW named csw-{inst}, where {inst} corresponds to a key in self.institutions.
+        """
         url = CSW_URL.format(virtual_csw_name=inst)
         self.inst = inst
         self.connect_to_csw(url)
         self.get_records()
         self.transform_records()
-        if self.to_csv:
-            self.to_spreadsheet(self.record_dicts)
-        else:
-            self.solr.add_dict_list_to_solr(self.record_dicts)
+        self.handle_transformed_records()
 
-    def records_by_csw(self, csw_name, inst=None):
+
+    def records_by_csw(self, csw_name):
         url = CSW_URL.format(virtual_csw_name=csw_name)
-        if inst:
-            self.inst = inst
         self.connect_to_csw(url)
         self.get_records()
         self.transform_records()
-        if self.to_csv:
-            self.to_spreadsheet(self.record_dicts)
-        else:
-            self.solr.add_dict_list_to_solr(self.record_dicts)
+        self.handle_transformed_records()
 
 
     def update_one_record(self, uuid):
         url = CSW_URL.format(virtual_csw_name="publication")
         self.connect_to_csw(url)
-        self.csw_i.getrecordbyid(id=[uuid], outputschema="http://www.isotc211.org/2005/gmd")
+        self.csw_i.getrecordbyid(id=[uuid],
+            outputschema="http://www.isotc211.org/2005/gmd")
         self.records.update(self.csw_i.records)
         rec = self.records[uuid].xml
         rec = rec.replace("\n","")
         root = etree.fromstring(rec)
         record_etree = etree.ElementTree(root)
         inst = self.get_inst_for_record(uuid)
-        result = self.transform(record_etree, institution=self.institutions[inst])
+        result = self.transform(record_etree,
+            institution=self.institutions[inst])
         result_u = unicode(result)
         log.debug(result_u)
         try:
@@ -298,11 +357,64 @@ class CSWToGeoBlacklight(object):
             log.error("ERROR")
             log.error(result_u)
 
-        if self.to_csv:
-            self.to_spreadsheet(result_dict)
-        else:
-            self.solr.add_dict_list_to_solr([result_dict])
+        self.handle_transformed_records()
 
+    @staticmethod
+    def chunker(seq, size):
+        return (seq[pos:pos + size] for pos in xrange(0, len(seq), size))
+
+    def records_by_category(self, category):
+        if not self.gn_session:
+            self.create_geonetwork_session()
+        csw_url = CSW_URL.format(virtual_csw_name="publication")
+        self.connect_to_csw(csw_url)
+
+        url = self.GEONETWORK_BY_CAT.format(category=urllib.quote_plus(category))
+        log.debug(url)
+        uuids_and_insts = {}
+        r = self.gn_session.get(url)
+        j = r.json()
+        if j.has_key("metadata"):
+            results = j["metadata"]
+            log.info("{n} records found for category '{cat}'".format(
+                n=str(len(results)),
+                cat=category))
+
+            for r in results:
+                ownerId = r["geonet:info"]["ownerId"]
+                uuid = r["geonet:info"]["uuid"]
+                if self.USERS_INSTITUTIONS_MAP.has_key(ownerId):
+                    uuids_and_insts[uuid] = self.USERS_INSTITUTIONS_MAP[ownerId]
+                else:
+                    log.warn("Owner id '{id}', which maps to user name '{name}' not found in user map. \
+                        Make sure users.py is up-to-date.".format(id=ownerId,name=r["userinfo"]))
+
+            self.get_records_by_ids(uuids_and_insts.keys())
+            self.transform_records(uuids_and_insts=uuids_and_insts)
+            self.handle_transformed_records()
+
+        else:
+            log.warn(r.text)
+
+    def handle_transformed_records(self, output_path="./output"):
+        if self.to_csv:
+            self.to_spreadsheet(self.record_dicts)
+        elif self.to_json:
+            for i in self.record_dicts:
+                if not os.path.exists(os.path.join(output_path, i["uuid"])):
+                    os.makedirs(os.path.join(output_path, i["uuid"]))
+                with open(os.path.join(output_path, i["uuid"],"geoblacklight.json"), "wb") as json_file:
+                    json.dump(i, json_file)
+        elif self.to_xml:
+            for i in self.records:
+                rec = self.records[i].xml
+                uuid = "urn-" + i
+                if not os.path.exists(os.path.join(output_path, uuid)):
+                    os.makedirs(os.path.join(output_path, uuid))
+                with open(os.path.join(output_path, uuid,"iso19139.xml"), "wb") as xml_file:
+                    xml_file.write(rec)
+        else:
+            self.solr.add_dict_list_to_solr(self.record_dicts)
 
     def records_by_csv(self, path_to_csv, inst=None):
         with open(path_to_csv,"rU") as f:
@@ -320,47 +432,52 @@ class CSWToGeoBlacklight(object):
                     if "inst" in fieldnames:
                         uuids_and_insts[row["uuid"]] =row["inst"]
                     #TODO use Owner field to determint inst, to cut down on http calls
-                    elif "inst" not in fieldnames:
+                    elif "owner" in fieldnames:
+                        if self.USERS_INSTITUTIONS_MAP.has_key(row["owner"]):
+                            #log.debug(row["owner"] +" => "+ self.USERS_INSTITUTIONS_MAP[row["owner"]])
+                            uuids_and_insts[row["uuid"]] = self.USERS_INSTITUTIONS_MAP[row["owner"]]
+                    elif "inst" not in fieldnames and "owner" not in fieldnames:
                         uuids_and_insts[row["uuid"]] = self.get_inst_for_record(row["uuid"])
                 else:
                     uuids_and_insts[row["uuid"]] = inst
 
-            self.csw_i.getrecordbyid(id=uuids_and_insts.keys(), outputschema="http://www.isotc211.org/2005/gmd")
-            self.records.update(self.csw_i.records)
+            self.get_records_by_ids(uuids_and_insts.keys())
             self.transform_records(uuids_and_insts=uuids_and_insts)
-
-            if self.to_csv:
-                self.to_spreadsheet(self.record_dicts)
-            else:
-                self.solr.add_dict_list_to_solr(self.record_dicts)
+            self.handle_transformed_records()
 
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("-r", "--recursive", action='store_true', help="If input involves a folder, recurse into subfolders. Default is false.")
+    #TODO change this stupid argument name
+    parser.add_argument("-pi", "--provenance-institution", help="The institution to assign dct_provenance_s to. If provided, this will speed things up. But make sure it's applicable to _all_ records involved. \
+        \nValid values are one of the following : iowa, illinois, mich, minn, msu, psu, purdue, umd, wisc")
+    parser.add_argument("-c", "--collection", help="The collection name (dc_collection) to use for these records. Added as XSL param")
+
+    output_group = parser.add_mutually_exclusive_group(required=False)
+    output_group.add_argument("-csv", "--to_csv", action='store_true', help="Output to CSV instead of GBL.")
+    output_group.add_argument("-j", "--to_json", action='store_true', help="Outputs GeoBlacklight JSON files.")
+    output_group.add_argument("-x", "--to_xml", action='store_true', help="Outputs ISO19139 XML files.")
+
     group = parser.add_mutually_exclusive_group(required=True)
-
-    #TODO make spreadsheet output an option for all of the group options below (institution, single csw, single uuid, csv)
-    parser.add_argument("-w", "--to_csv", action='store_true', help="Output to CSV instead of GBL.")
-    parser.add_argument("-n", "--nstitution", help="The institution to harvest records for.")
-
-    group.add_argument("-p", "--path_to_csv", help="Indicate path to the csv containing the record uuids to update.")
+    group.add_argument("-aj", "--add-json", help="Indicate path to folder with GeoBlacklight JSON files that will be uploaded.")
+    group.add_argument("-cat", "--by-category", help="Indicate GeoNetwork Category to pull records from.")
+    group.add_argument("-p", "--path-to-csv", help="Indicate path to the csv containing the record uuids to update.")
     group.add_argument("-i", "--institution", help="The institution to harvest records for. \
         \nValid values are one of the following : iowa, illinois, mich, minn, msu, psu, purdue, umd, wisc")
     group.add_argument("-s", "--single-record-uuid", help="A single uuid to update")
     group.add_argument("-v", "--single-virtual-csw", help="A virtual csw to harvest records from. Provide the text that follows 'csw-'")
     group.add_argument("-d", "--delete-records-institution", help="Delete records for an instution. \
         \nValid values are one of the following : iowa, illinois, mich, minn, msu, psu, purdue, umd, wisc")
+
     args = parser.parse_args()
-    to_csv = args.to_csv
-    print to_csv
     interface = CSWToGeoBlacklight(SOLR_URL, SOLR_USERNAME, SOLR_PASSWORD,
-        CSW_URL, CSW_USER, CSW_PASSWORD, USERS_INSTITUTIONS_MAP, TO_CSV=to_csv)
+        CSW_URL, CSW_USER, CSW_PASSWORD, USERS_INSTITUTIONS_MAP, INST=args.provenance_institution,
+        TO_CSV=args.to_csv, TO_JSON=args.to_json, TO_XML=args.to_xml,
+         COLLECTION=args.collection, RECURSIVE=args.recursive)
 
     if args.path_to_csv:
-        if args.nstitution:
-            interface.records_by_csv(args.path_to_csv, inst=args.nstitution)
-        else:
-            interface.records_by_csv(args.path_to_csv)
+        interface.records_by_csv(args.path_to_csv)
 
     elif args.institution:
         interface.records_by_institution(args.institution)
@@ -369,14 +486,22 @@ def main():
         interface.update_one_record(args.single_record_uuid)
 
     elif args.single_virtual_csw:
-        interface.records_by_csw(args.single_virtual_csw, inst=raw_input("Enter institution code value. \
-            \nValid values are one of the following : iowa, illinois, mich, minn, msu, psu, purdue, umd, wisc: "))
+        interface.records_by_csw(args.single_virtual_csw)
 
     elif args.delete_records_institution:
         interface.delete_records_institution(args.delete_records_institution)
 
+    elif args.add_json:
+        interface.add_json(args.add_json)
+
+    elif args.by_category:
+        interface.records_by_category(args.by_category)
+
     else:
         sys.exit("Indicate an institution or a csv containing UUIDs to update.")
+
+    if interface.gn_session:
+        interface.destroy_geonetwork_session()
 
 
 if __name__ == "__main__":
