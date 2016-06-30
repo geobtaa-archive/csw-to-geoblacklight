@@ -71,6 +71,7 @@ class SolrInterface(object):
         else:
             self.solr.delete(q=self.escape_query(query))
 
+
     def json_to_dict(self, json_doc):
         j = json.load(open(json_doc, "r"))
         return j
@@ -78,9 +79,11 @@ class SolrInterface(object):
     def add_json_to_solr(self, json_doc):
         record_dict = self.json_to_dict(json_doc)
         self.add_dict_to_solr(record_dict)
+        
 
     def add_dict_list_to_solr(self, list_of_dicts):
         self.solr.add(list_of_dicts)
+
 
 
 class CSWToGeoBlacklight(object):
@@ -351,8 +354,8 @@ class CSWToGeoBlacklight(object):
         result_u = unicode(result)
         log.debug(result_u)
         try:
-            result_dict = demjson.decode(result_u)
-            log.debug(result_dict)
+            self.record_dicts = [demjson.decode(result_u)]
+            log.debug(self.record_dicts)
         except demjson.JSONDecodeError as e:
             log.error("ERROR")
             log.error(result_u)
@@ -397,6 +400,7 @@ class CSWToGeoBlacklight(object):
             log.warn(r.text)
 
     def handle_transformed_records(self, output_path="./output"):
+        log.debug("Handling {n} records.".format(n=len(self.record_dicts)))
         if self.to_csv:
             self.to_spreadsheet(self.record_dicts)
         elif self.to_json:
