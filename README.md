@@ -77,6 +77,11 @@ Or to a CSV (helpful for checking for problems) called `gblout.csv`:
 ./csw-to-geoblacklight.py -cat "Minnesota Geospatial Commons" -csv
 ```
 
+Or to both XML and JSON, along with a `layers.json` file for [OpenGeometadata](https://github.com/OpenGeoMetadata), include `-ogm` and the name of the folder to use as the base for output (it will be created if it doesn't exist):
+```
+./csw-to-geoblacklight.py -cat "Minnesota Geospatial Commons" -ogm minn-geo-commons
+```
+
 Since we know that the institution for all of the Minn. Geo. Commons is Minnesota, you can provide the `provenance-institution` using `-pi`, which saves time:
 ```
 ./csw-to-geoblacklight.py -cat "Minnesota Geospatial Commons" -j -pi minn
