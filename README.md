@@ -15,13 +15,13 @@ Fire up the ol' command line, my friend.
 
 ```
 usage: csw-to-geoblacklight.py [-h] [-r] [-pi PROVENANCE_INSTITUTION]
-                               [-c COLLECTION] [-csv | -j | -x]
+                               [-c COLLECTION]
+                               [-csv | -j | -x | -ogm TO_OPENGEOMETADATA]
                                (-aj ADD_JSON | -cat BY_CATEGORY | -p PATH_TO_CSV | -i INSTITUTION | -s SINGLE_RECORD_UUID | -v SINGLE_VIRTUAL_CSW | -d DELETE_RECORDS_INSTITUTION)
 
 optional arguments:
   -h, --help            show this help message and exit
   -r, --recursive       If input involves a folder, recurse into subfolders.
-                        Default is false.
   -pi PROVENANCE_INSTITUTION, --provenance-institution PROVENANCE_INSTITUTION
                         The institution to assign dct_provenance_s to. If
                         provided, this will speed things up. But make sure
@@ -30,10 +30,13 @@ optional arguments:
                         mich, minn, msu, psu, purdue, umd, wisc
   -c COLLECTION, --collection COLLECTION
                         The collection name (dc_collection) to use for these
-                        records. Added as XSL param                        
-  -csv, --to_csv        Output to CSV instead of GBL.
+                        records. Added as XSL param
+  -csv, --to_csv        Output to CSV.
   -j, --to_json         Outputs GeoBlacklight JSON files.
   -x, --to_xml          Outputs ISO19139 XML files.
+  -ogm TO_OPENGEOMETADATA, --to_opengeometadata TO_OPENGEOMETADATA
+                        Outputs ISO19139 XMLs and GeoBlacklight JSON files to
+                        a folder name specified.
   -aj ADD_JSON, --add-json ADD_JSON
                         Indicate path to folder with GeoBlacklight JSON files
                         that will be uploaded.
@@ -55,7 +58,6 @@ optional arguments:
                         Delete records for an instution. Valid values are one
                         of the following : iowa, illinois, mich, minn, msu,
                         psu, purdue, umd, wisc
-
 ```
 
 ## Examples
