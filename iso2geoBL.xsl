@@ -19,6 +19,7 @@
   <!-- Collection name is provided as kwarg in the csw-to-geoblacklight.py script -->
   <xsl:param name="collection"/>
 
+
   <xsl:template match="/">
     <xsl:message terminate="no">STARTING</xsl:message>
 
@@ -249,7 +250,7 @@
               <xsl:text>,</xsl:text>
             </xsl:if>
           </xsl:when>
-          <xsl:when test="ancestor-or-self::*/gmd:individualName and not(ancestor-or-self::*/gmd:organizationName)">
+          <xsl:when test="ancestor-or-self::*/gmd:individualName and not(ancestor-or-self::*/gmd:organisationName)">
             <xsl:for-each select="ancestor-or-self::*/gmd:individualName">
               <xsl:text>"</xsl:text>
               <xsl:value-of select="ancestor-or-self::*/gmd:individualName"/>
@@ -259,7 +260,7 @@
               </xsl:if>
             </xsl:for-each>
           </xsl:when>
-          <xsl:when test="ancestor-or-self::*/gmd:individualName and ancestor-or-self::*/gmd:organizationName">
+          <xsl:when test="ancestor-or-self::*/gmd:individualName and ancestor-or-self::*/gmd:organisationName">
             <xsl:text>"</xsl:text>
             <xsl:value-of select="ancestor-or-self::*/gmd:individualName"/>
             <xsl:text>", </xsl:text>
@@ -268,14 +269,17 @@
             <xsl:text>"</xsl:text>
           </xsl:when>
         </xsl:choose>
+        <xsl:if test="position() != last()">
+          <xsl:text>,</xsl:text>
+        </xsl:if>
       </xsl:for-each>
 
       <xsl:text>],</xsl:text>
     </xsl:if>
-    <xsl:if test="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty/gmd:role/gmd:CI_RoleCode[@codeListValue='publisher']">
+    <xsl:if test="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[@codeListValue='publisher']]">
       <xsl:text>"dc_publisher_sm": [</xsl:text>
 
-      <xsl:for-each select="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty/gmd:role/gmd:CI_RoleCode[@codeListValue='publisher']">
+      <xsl:for-each select="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:citedResponsibleParty/gmd:CI_ResponsibleParty[gmd:role/gmd:CI_RoleCode[@codeListValue='publisher']]">
         <xsl:choose>
           <xsl:when test="ancestor-or-self::*/gmd:organisationName and not(ancestor-or-self::*/gmd:individualName)">
             <xsl:text>"</xsl:text>
@@ -285,7 +289,7 @@
               <xsl:text>,</xsl:text>
             </xsl:if>
           </xsl:when>
-          <xsl:when test="ancestor-or-self::*/gmd:individualName and not(ancestor-or-self::*/gmd:organizationName)">
+          <xsl:when test="ancestor-or-self::*/gmd:individualName and not(ancestor-or-self::*/gmd:organisationName)">
             <xsl:for-each select="ancestor-or-self::*/gmd:individualName">
               <xsl:text>"</xsl:text>
               <xsl:value-of select="ancestor-or-self::*/gmd:individualName"/>
@@ -295,7 +299,7 @@
               </xsl:if>
             </xsl:for-each>
           </xsl:when>
-          <xsl:when test="ancestor-or-self::*/gmd:individualName and ancestor-or-self::*/gmd:organizationName">
+          <xsl:when test="ancestor-or-self::*/gmd:individualName and ancestor-or-self::*/gmd:organisationName">
             <xsl:text>"</xsl:text>
             <xsl:value-of select="ancestor-or-self::*/gmd:individualName"/>
             <xsl:text>", </xsl:text>
@@ -304,7 +308,11 @@
             <xsl:text>"</xsl:text>
           </xsl:when>
         </xsl:choose>
+        <xsl:if test="position() != last()">
+          <xsl:text>,</xsl:text>
+        </xsl:if>
       </xsl:for-each>
+
       <xsl:text>],</xsl:text>
     </xsl:if>
 
@@ -405,6 +413,9 @@
               <xsl:text>,</xsl:text>
             </xsl:if>
           </xsl:for-each>
+          <xsl:if test="position() != last()">
+            <xsl:text>,</xsl:text>
+          </xsl:if>
         </xsl:when>
         <xsl:otherwise>
           <xsl:for-each select="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:type/gmd:MD_KeywordTypeCode[@codeListValue='place']">
@@ -416,15 +427,13 @@
                 <xsl:text>,</xsl:text>
               </xsl:if>
             </xsl:for-each>
+            <xsl:if test="position() != last()">
+              <xsl:text>,</xsl:text>
+            </xsl:if>
           </xsl:for-each>
         </xsl:otherwise>
       </xsl:choose>
        
-      
-
-        <xsl:if test="position() != last()">
-          <xsl:text>,</xsl:text>
-        </xsl:if>
       <xsl:text>],</xsl:text>
     </xsl:if>
 
@@ -608,7 +617,7 @@
     <!-- TODO: Add metadata reference using FileIdentifier up here before digging into online resources -->
     <xsl:for-each select="//gmd:MD_DigitalTransferOptions/gmd:onLine/gmd:CI_OnlineResource">
       <xsl:choose>
-        <xsl:when test="gmd:protocol/gco:CharacterString/text() = 'ESRI:ArcGIS'">
+        <xsl:when test="gmd:protocol/gco:CharacterString/text() = 'ESRI:ArcGIS' and not(starts-with(gmd:linkage/gmd:URL,'http:'))">
           <!-- TODO test url for which reference to utilize -->
             <xsl:choose>
               <xsl:when test="contains(gmd:linkage/gmd:URL,'FeatureServer')">
@@ -637,17 +646,17 @@
           <xsl:value-of select="gmd:linkage/gmd:URL"/>
           <xsl:text>\"</xsl:text>
         </xsl:when>
-        <xsl:when test="contains(gmd:protocol/gco:CharacterString/text(), 'WWW:IIIF')">
+        <xsl:when test="contains(gmd:protocol/gco:CharacterString/text(), 'WWW:IIIF') and not(starts-with(gmd:linkage/gmd:URL,'http:'))">
           <xsl:text>\"http://iiif.io/api/image\":\"</xsl:text>
           <xsl:value-of select="gmd:linkage/gmd:URL"/>
           <xsl:text>\"</xsl:text>
         </xsl:when>
-        <xsl:when test="contains(gmd:protocol/gco:CharacterString/text(), 'WMS')">
+        <xsl:when test="contains(gmd:protocol/gco:CharacterString/text(), 'WMS') and not(starts-with(gmd:linkage/gmd:URL,'http:'))">
           <xsl:text>\"http://www.opengis.net/def/serviceType/ogc/wms\":\"</xsl:text>
           <xsl:value-of select="gmd:linkage/gmd:URL"/>
           <xsl:text>\"</xsl:text>
         </xsl:when>
-        <xsl:when test="contains(gmd:protocol/gco:CharacterString/text(), 'WFS')">
+        <xsl:when test="contains(gmd:protocol/gco:CharacterString/text(), 'WFS') and not(starts-with(gmd:linkage/gmd:URL,'http:'))">
           <xsl:text>\"http://www.opengis.net/def/serviceType/ogc/wfs\":\"</xsl:text>
           <xsl:value-of select="gmd:linkage/gmd:URL"/>
           <xsl:text>\"</xsl:text>

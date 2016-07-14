@@ -19,11 +19,12 @@ from owslib.etree import etree
 from owslib import util
 from owslib.namespaces import Namespaces
 import unicodecsv as csv
-import pysolr
 # demjson provides better error messages than json
 import demjson
 import requests
 
+# local imports
+from solr_interface import SolrInterface
 import config
 from users import USERS_INSTITUTIONS_MAP
 
@@ -44,50 +45,6 @@ ch.setFormatter(log_formatter)
 log.addHandler(ch)
 
 
-class SolrInterface(object):
-
-    def __init__(self, url, to_spreadsheet=False):
-        self.solr_url = url
-        self.solr = self._connect_to_solr()
-
-    def _connect_to_solr(self):
-        """
-        Connects to Solr using the url provided when object was instantiated.
-        """
-        return pysolr.Solr(self.solr_url)
-
-    def escape_query(self, raw_query):
-        """
-        Escape single quotes in value. \
-        May or may not be worth a damn at the moment.
-        """
-        return raw_query.replace("'", "\'")
-
-    def delete_query(self, query, no_confirm=False):
-        if not no_confirm:
-            s = self.solr.search(self.escape_query(query), **{"rows": "0"})
-            are_you_sure = raw_input(
-                "Are you sure you want to delete {num_recs} \
-                records from Solr? Y/N: ".format(num_recs=s.hits)
-            )
-            if are_you_sure.lower() == "y":
-                self.solr.delete(q=self.escape_query(query))
-            else:
-                log.debug("Abandon ship! Not deleting anything.")
-        else:
-            self.solr.delete(q=self.escape_query(query))
-
-    def json_to_dict(self, json_doc):
-        j = json.load(open(json_doc, "r"))
-        return j
-
-    def add_json_to_solr(self, json_doc):
-        record_dict = self.json_to_dict(json_doc)
-        self.add_dict_to_solr(record_dict)
-
-    def add_dict_list_to_solr(self, list_of_dicts):
-        self.solr.add(list_of_dicts)
-
 
 class CSWToGeoBlacklight(object):
 
@@ -102,7 +59,7 @@ class CSWToGeoBlacklight(object):
                 password=SOLR_PASSWORD
             )
 
-        self.solr = SolrInterface(SOLR_URL)
+        self.solr = SolrInterface(log=log, url=SOLR_URL)
         self.XSLT_PATH = os.path.join(".", "iso2geoBL.xsl")
         self.transform = etree.XSLT(etree.parse(self.XSLT_PATH))
         self.namespaces = self.get_namespaces()
@@ -125,9 +82,10 @@ class CSWToGeoBlacklight(object):
         self.CSW_URL = CSW_URL
         self.RECURSIVE = RECURSIVE
         self.PREFIX = "urn-"
+        self.LANG = "eng"
         self.GEONETWORK_BASE = CSW_URL[:CSW_URL.find("/geonetwork/")]
         self.GEONETWORK_SEARCH_BASE = self.GEONETWORK_BASE \
-            + "/geonetwork/srv/eng/q?_content_type=json"
+            + "/geonetwork/srv/{l}/q?_content_type=json".format(l=self.LANG)
         self.GEONETWORK_BY_CAT = self.GEONETWORK_SEARCH_BASE \
             + "&fast=index&_cat={category}"
         self.GET_INST_URL = self.GEONETWORK_SEARCH_BASE \
@@ -206,6 +164,7 @@ class CSWToGeoBlacklight(object):
         for i in files:
             dicts.append(self.solr.json_to_dict(i))
         self.solr.add_dict_list_to_solr(dicts)
+        log.info("Added {n} records to solr.".format(n=len(dicts)))
 
     def delete_records_institution(self, inst):
         """
@@ -227,7 +186,7 @@ class CSWToGeoBlacklight(object):
     def get_records_by_ids(self, ids):
         recordcount = 0
         for group in self.chunker(ids, 100):
-            log.debug("Requested {n} CSW records so far".format(
+            log.info("Requested {n} records from CSW so far".format(
                 n=str(recordcount)
             ))
             recordcount = recordcount + 100
@@ -334,6 +293,9 @@ class CSWToGeoBlacklight(object):
                 )
 
             result_u = unicode(result)
+            # A dirty hack to avoid XSLT quagmire WRT skipping non-HTTPS links :{}
+            result_u = result_u.replace(",}","}").replace("{,", "{")
+
             try:
                 result_dict = OrderedDict({r: demjson.decode(result_u)})
                 log.debug(result_dict)
@@ -393,16 +355,25 @@ class CSWToGeoBlacklight(object):
 
     @staticmethod
     def chunker(seq, size):
-        return (seq[pos:pos + size] for pos in xrange(0, len(seq), size))
+        if sys.version_info.major == 3:
+            return (seq[pos:pos + size] for pos in range(0, len(seq), size))
+        elif sys.version_info.major == 2:
+            return (seq[pos:pos + size] for pos in xrange(0, len(seq), size))
 
     def records_by_category(self, category):
         if not self.gn_session:
             self.create_geonetwork_session()
         csw_url = self.CSW_URL.format(virtual_csw_name="publication")
         self.connect_to_csw(csw_url)
-        url = self.GEONETWORK_BY_CAT.format(
-            category=urllib.quote_plus(category)
-        )
+
+        if sys.version_info.major == 3:
+            url = self.GEONETWORK_BY_CAT.format(
+                category=urllib.parse.quote_plus(category)
+            )
+        elif sys.version_info.major == 2:
+            url = self.GEONETWORK_BY_CAT.format(
+                category=urllib.quote_plus(category)
+            )
         log.debug(url)
         uuids_and_insts = {}
         r = self.gn_session.get(url)
@@ -486,7 +457,10 @@ class CSWToGeoBlacklight(object):
             self.output_layers_json(self.to_opengeometadata)
 
         else:
-            self.solr.add_dict_list_to_solr(self.record_dicts)
+            self.solr.add_dict_list_to_solr(self.record_dicts.values())
+            log.info("Added {n} records to Solr.".format(
+                n=len(self.record_dicts)
+            ))
 
     def records_by_csv(self, path_to_csv, inst=None):
         with open(path_to_csv, "rU") as f:

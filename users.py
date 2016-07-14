@@ -19,7 +19,7 @@ USERS_INSTITUTIONS_MAP = {
     "39829":"purdue",
     "66840":"umd",
     "527597":"umd",
-    "363804":"umn",
+    "363804":"umd",
     "125094":"wisc",
     "1":"minn",#this is really just for testing
     "Amanda":"msu",
