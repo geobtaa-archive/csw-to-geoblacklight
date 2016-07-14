@@ -402,7 +402,8 @@ class CSWToGeoBlacklight(object):
             log.warn(r.text)
 
     def make_output_folder_path(self, output_path, uuid):
-        p = os.path.join(output_path, "/".join(uuid.split("-")))
+        uuid_r = uuid.replace("-", "")
+        p = os.path.join(output_path, uuid_r[0:2], uuid_r[2:4], uuid_r[4:6], uuid_r[6:])
         if not os.path.exists(p):
             os.makedirs(p)
         return p
@@ -430,8 +431,8 @@ class CSWToGeoBlacklight(object):
             layers_json = {}
 
             for uuid in self.record_dicts:
-                uuid_split = uuid.split("-")
-                layers_json[self.PREFIX + uuid] = "/".join(uuid_split)
+                uuid_r = uuid.replace("-", "")
+                layers_json[self.PREFIX + uuid] = uuid_r[0:2] + "/" + uuid_r[2:4] + "/" + uuid_r[4:6] + "/" + uuid_r[6:]
             json.dump(
                 layers_json,
                 layers_json_file,
