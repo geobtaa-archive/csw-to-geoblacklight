@@ -166,7 +166,7 @@ class CSWToGeoBlacklight(object):
         if self.RECURSIVE:
             for path, folder, ffiles in os.walk(start_path):
                 for i in fnmatch.filter(ffiles, criteria):
-                    files = files + os.path.join(path, i)
+                    files.append(os.path.join(path, i))
         else:
             files = glob(os.path.join(start_path, criteria))
         return files
