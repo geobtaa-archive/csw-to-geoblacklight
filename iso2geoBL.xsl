@@ -269,9 +269,9 @@
             <xsl:text>"</xsl:text>
           </xsl:when>
         </xsl:choose>
-        <xsl:if test="position() != last()">
+        <!--<xsl:if test="position() != last()">
           <xsl:text>,</xsl:text>
-        </xsl:if>
+        </xsl:if>-->
       </xsl:for-each>
 
       <xsl:text>],</xsl:text>
@@ -614,7 +614,6 @@
 
     <!-- let's try parsing references!!!!!!!! YEEEESSSS -->
     <xsl:text>,"dct_references_s": "{</xsl:text>
-    <!-- TODO: Add metadata reference using FileIdentifier up here before digging into online resources -->
     <xsl:for-each select="//gmd:MD_DigitalTransferOptions/gmd:onLine/gmd:CI_OnlineResource">
       <xsl:choose>
         <xsl:when test="gmd:protocol/gco:CharacterString/text() = 'ESRI:ArcGIS' and not(starts-with(gmd:linkage/gmd:URL,'http:'))">

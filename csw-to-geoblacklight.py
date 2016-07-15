@@ -51,7 +51,8 @@ class CSWToGeoBlacklight(object):
     def __init__(self, SOLR_URL, SOLR_USERNAME, SOLR_PASSWORD, CSW_URL,
                  CSW_USER, CSW_PASSWORD, USERS_INSTITUTIONS_MAP, INST=None,
                  TO_CSV=False, TO_JSON=False, TO_XML=False, TO_OGM=False,
-                 max_records=None, COLLECTION=None, RECURSIVE=False):
+                 max_records=None, COLLECTION=None, RECURSIVE=False,
+                 MD_LINK=False):
 
         if SOLR_USERNAME and SOLR_PASSWORD:
             SOLR_URL = SOLR_URL.format(
@@ -66,6 +67,8 @@ class CSWToGeoBlacklight(object):
         self.to_csv = TO_CSV
         self.to_json = TO_JSON
         self.to_xml = TO_XML
+        self.md_link = MD_LINK
+        self.OPENGEOMETADATA_URL = "https://opengeometadata.github.io/{repo}/{uuid_path}/iso19139.xml"
         self.to_opengeometadata = TO_OGM
         self.inst = INST
         self.records = OrderedDict()
@@ -131,6 +134,17 @@ class CSWToGeoBlacklight(object):
             "purdue": '"Purdue"',
             "umd": '"Maryland"',
             "wisc": '"Wisconsin"'
+        }
+        self.opengeometadata_map = {
+            "iowa": "edu.uiowa",
+            "illinois": "edu.uillinois",
+            "minn": "edu.umn",
+            "psu": "edu.pennstate",
+            "msu": "edu.michstate",
+            "mich": "edu.umich",
+            "purdue": "edu.purdue",
+            "umd": "edu.umaryland",
+            "wisc": "edu.uwisc"
         }
         self.USERS_INSTITUTIONS_MAP = USERS_INSTITUTIONS_MAP
 
@@ -264,6 +278,11 @@ class CSWToGeoBlacklight(object):
                 log.info("Could not find user in map. Defaulting to Minn.")
                 return "minn"
 
+    @staticmethod
+    def get_uuid_path(uuid):
+        uuid_r = uuid.replace("-","")
+        return uuid_r[0:2] + "/" + uuid_r[2:4] + "/" + uuid_r[4:6] + "/" + uuid_r[6:]
+
     def transform_records(self, uuids_and_insts=None):
         """
         Transforms a set of ISO19139 records into GeoBlacklight JSON.
@@ -297,13 +316,21 @@ class CSWToGeoBlacklight(object):
             result_u = result_u.replace(",}","}").replace("{,", "{")
 
             try:
-                result_dict = OrderedDict({r: demjson.decode(result_u)})
+                result_json = demjson.decode(result_u)
+                if self.md_link:
+                    refs =  demjson.decode(result_json["dct_references_s"])
+                    refs["http://www.isotc211.org/schemas/2005/gmd/"] = self.OPENGEOMETADATA_URL.format(
+                        repo=self.opengeometadata_map[inst],
+                        uuid_path=self.get_uuid_path(r))
+                    result_json["dct_references_s"] = demjson.encode(refs)
+                result_dict = OrderedDict({r: result_json})
                 log.debug(result_dict)
+                self.record_dicts.update(result_dict)
             except demjson.JSONDecodeError as e:
                 log.error("ERROR: {e}".format(e=e))
                 log.error(result_u)
-            finally:
-                self.record_dicts.update(result_dict)
+
+
 
     def records_by_institution(self, inst):
         """
@@ -414,7 +441,11 @@ class CSWToGeoBlacklight(object):
             fn = os.path.join(folder_path,
                               "geoblacklight.json")
             with open(fn, "wb") as json_file:
-                json.dump(self.record_dicts[uuid], json_file, indent=0)
+                try:
+                    json.dump(self.record_dicts[uuid], json_file, indent=0)
+                except TypeError as e:
+                    log.error(e)
+                    log.error("UUID with error: {uuid}".format(uuid=uuid))
 
     def output_xml(self, output_path="./output"):
         for uuid in self.records:
@@ -431,8 +462,7 @@ class CSWToGeoBlacklight(object):
             layers_json = {}
 
             for uuid in self.record_dicts:
-                uuid_r = uuid.replace("-", "")
-                layers_json[self.PREFIX + uuid] = uuid_r[0:2] + "/" + uuid_r[2:4] + "/" + uuid_r[4:6] + "/" + uuid_r[6:]
+                layers_json[self.PREFIX + uuid] = self.get_uuid_path(uuid)
             json.dump(
                 layers_json,
                 layers_json_file,
@@ -510,26 +540,33 @@ def main():
         "--collection",
         help="The collection name (dc_collection) to use for these records. \
             Added as XSL param")
-
+    parser.add_argument(
+        "-md",
+        "--metadata-link",
+        action='store_true',
+        help="If set, will add a link to the ISO19139 metadata to the \
+            GeoBlacklight JSON in the form of an OpenGeometadata URL. \
+            Specifically, the url will look something like: \
+            https://opengeometadata.github.io/{repo}/07/22/47/a0c6fb4d9a9a9b67e578f2ac50/iso19139.xml.")
     output_group = parser.add_mutually_exclusive_group(required=False)
     output_group.add_argument(
         "-csv",
-        "--to_csv",
+        "--to-csv",
         action='store_true',
         help="Output to CSV.")
     output_group.add_argument(
         "-j",
-        "--to_json",
+        "--to-json",
         action='store_true',
         help="Outputs GeoBlacklight JSON files.")
     output_group.add_argument(
         "-x",
-        "--to_xml",
+        "--to-xml",
         action='store_true',
         help="Outputs ISO19139 XML files.")
     output_group.add_argument(
         "-ogm",
-        "--to_opengeometadata",
+        "--to-opengeometadata",
         help="Outputs ISO19139 XMLs and GeoBlacklight JSON files to \
             a folder name specified.")
 
@@ -578,7 +615,7 @@ def main():
         USERS_INSTITUTIONS_MAP, INST=args.provenance_institution,
         TO_CSV=args.to_csv, TO_JSON=args.to_json, TO_XML=args.to_xml,
         TO_OGM=args.to_opengeometadata, COLLECTION=args.collection,
-        RECURSIVE=args.recursive)
+        RECURSIVE=args.recursive, MD_LINK=args.metadata_link)
 
     if args.path_to_csv:
         interface.records_by_csv(args.path_to_csv)

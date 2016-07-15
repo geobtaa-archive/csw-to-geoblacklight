@@ -2,6 +2,8 @@ config.py
 output/
 */*
 *.csv
+*.xml
+*.json
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -18,7 +18,7 @@ Fire up the ol' command line, my friend.
 
 ```
 usage: csw-to-geoblacklight.py [-h] [-r] [-pi PROVENANCE_INSTITUTION]
-                               [-c COLLECTION]
+                               [-c COLLECTION] [-md]
                                [-csv | -j | -x | -ogm TO_OPENGEOMETADATA]
                                (-aj ADD_JSON | -cat BY_CATEGORY | -p PATH_TO_CSV | -i INSTITUTION | -s SINGLE_RECORD_UUID | -v SINGLE_VIRTUAL_CSW | -d DELETE_RECORDS_INSTITUTION)
 
@@ -34,10 +34,15 @@ optional arguments:
   -c COLLECTION, --collection COLLECTION
                         The collection name (dc_collection) to use for these
                         records. Added as XSL param
-  -csv, --to_csv        Output to CSV.
-  -j, --to_json         Outputs GeoBlacklight JSON files.
-  -x, --to_xml          Outputs ISO19139 XML files.
-  -ogm TO_OPENGEOMETADATA, --to_opengeometadata TO_OPENGEOMETADATA
+  -md, --metadata-link  If set, will add a link to the ISO19139 metadata to
+                        the GeoBlacklight JSON in the form of an
+                        OpenGeometadata URL. Specifically, the url will look
+                        something like: https://opengeometadata.github.io/{rep
+                        o}/07/22/47/a0c6fb4d9a9a9b67e578f2ac50/iso19139.xml.
+  -csv, --to-csv        Output to CSV.
+  -j, --to-json         Outputs GeoBlacklight JSON files.
+  -x, --to-xml          Outputs ISO19139 XML files.
+  -ogm TO_OPENGEOMETADATA, --to-opengeometadata TO_OPENGEOMETADATA
                         Outputs ISO19139 XMLs and GeoBlacklight JSON files to
                         a folder name specified.
   -aj ADD_JSON, --add-json ADD_JSON
