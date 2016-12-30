@@ -50,8 +50,8 @@ class CSWToGeoBlacklight(object):
 
     def __init__(self, SOLR_URL, SOLR_USERNAME, SOLR_PASSWORD, CSW_URL,
                  CSW_USER, CSW_PASSWORD, USERS_INSTITUTIONS_MAP, INST=None,
-                 TO_CSV=False, TO_JSON=False, TO_XML=False, TO_OGM=False,
-                 max_records=None, COLLECTION=None, RECURSIVE=False,
+                 TO_CSV=False, TO_JSON=False, TO_XML=False, TO_XMLs=False, TO_OGM=False,
+                 max_records=None, RECURSIVE=False,
                  MD_LINK=False):
 
         if SOLR_USERNAME and SOLR_PASSWORD:
@@ -67,6 +67,7 @@ class CSWToGeoBlacklight(object):
         self.to_csv = TO_CSV
         self.to_json = TO_JSON
         self.to_xml = TO_XML
+        self.to_xmls = TO_XMLs
         self.md_link = MD_LINK
         self.OPENGEOMETADATA_URL = "https://opengeometadata.github.io/{repo}/{uuid_path}/iso19139.xml"
         self.to_opengeometadata = TO_OGM
@@ -75,11 +76,12 @@ class CSWToGeoBlacklight(object):
         self.record_dicts = OrderedDict()
         self.max_records = max_records
         self.gn_session = None
+#         self.collection = None
 
-        if COLLECTION:
-            self.collection = '"' + COLLECTION + '"'
-        else:
-            self.collection = None
+#         if COLLECTION:
+#             self.collection = '"' + COLLECTION + '"'
+#         else:
+#             self.collection = None
         self.CSW_USER = CSW_USER
         self.CSW_PASSWORD = CSW_PASSWORD
         self.CSW_URL = CSW_URL
@@ -118,7 +120,9 @@ class CSWToGeoBlacklight(object):
             'dct_spatial_sm',
             'dct_isPartOf_sm',
             "layer_slug_s",
-            'dc_type_s'
+            'dc_type_s',
+            'dc_source_sm',
+
         ]
 
         self.institutions_test = {
@@ -133,8 +137,17 @@ class CSWToGeoBlacklight(object):
             "mich": '"Michigan"',
             "purdue": '"Purdue"',
             "umd": '"Maryland"',
-            "wisc": '"Wisconsin"'
+            "wisc": '"Wisconsin"',
+            "ill": '"University of Illinois"',
+            "princeton": '"Princeton"',
         }
+
+#         self.collection = {
+#             "clay": '"Clay County GIS Data-md"'
+#         }
+
+
+
         self.opengeometadata_map = {
             "iowa": "edu.uiowa",
             "illinois": "edu.uillinois",
@@ -186,6 +199,12 @@ class CSWToGeoBlacklight(object):
         TODO make more flexible.
         """
         self.solr.delete_query("dct_provenance_s:" + self.institutions[inst])
+
+#     def delete_records_collection(self, collection):
+#         """
+#         Delete records from Solr.
+#         """
+#         self.solr.delete_query("dct_isPartOf_sm:" + self.collection[collection])
 
     def to_spreadsheet(self, records):
         """
@@ -299,20 +318,24 @@ class CSWToGeoBlacklight(object):
             root = etree.fromstring(rec)
             record_etree = etree.ElementTree(root)
 
-            if self.collection:
-                result = self.transform(
-                    record_etree,
-                    institution=self.institutions[inst],
-                    collection=self.collection
-                )
-            else:
-                result = self.transform(
-                    record_etree,
-                    institution=self.institutions[inst]
-                )
+            result = self.transform(record_etree,institution=self.institutions[inst])
+
+
+
+#             if self.collection:
+#                 result = self.transform(
+#                     record_etree,
+#                     institution=self.institutions[inst],
+#                     collection=self.collection
+#                 )
+#             else:
+#                 result = self.transform(
+#                     record_etree,
+#                     institution=self.institutions[inst]
+#                 )
 
             result_u = unicode(result)
-            # A dirty hack to avoid XSLT quagmire WRT skipping non-HTTPS links :{}
+#             A dirty hack to avoid XSLT quagmire WRT skipping non-HTTPS links :{}
             result_u = result_u.replace(",}","}").replace("{,", "{")
 
             try:
@@ -455,6 +478,13 @@ class CSWToGeoBlacklight(object):
             with open(fn, "wb") as xml_file:
                 xml_file.write(self.records[uuid].xml)
 
+    def single_xml(self, output_path="./output"):
+        for uuid in self.records:
+            folder_path = self.make_output_folder_path(output_path)
+            fn = os.path.join(folder_path,[uuid].xml)
+            with open(fn, "wb") as xml_file:
+                xml_file.write(self.records[uuid].xml)
+
     def output_layers_json(self, output_path="./output"):
         fname = os.path.join(output_path, "layers.json")
 
@@ -481,6 +511,9 @@ class CSWToGeoBlacklight(object):
 
         elif self.to_xml:
             self.output_xml(output_path)
+
+        elif self.to_xmls:
+            self.single_xml(output_path)
 
         elif self.to_opengeometadata:
             self.output_json(self.to_opengeometadata)
@@ -535,11 +568,11 @@ def main():
             will speed things up. But make sure it's applicable to _all_ \
             records involved. Valid values are one of the following : iowa, \
             illinois, mich, minn, msu, psu, purdue, umd, wisc")
-    parser.add_argument(
-        "-c",
-        "--collection",
-        help="The collection name (dc_collection) to use for these records. \
-            Added as XSL param")
+#     parser.add_argument(
+#         "-c",
+#         "--collection",
+#         help="The collection name (dc_collection) to use for these records. \
+#             Added as XSL param")
     parser.add_argument(
         "-md",
         "--metadata-link",
@@ -559,11 +592,19 @@ def main():
         "--to-json",
         action='store_true',
         help="Outputs GeoBlacklight JSON files.")
+
     output_group.add_argument(
         "-x",
         "--to-xml",
         action='store_true',
         help="Outputs ISO19139 XML files.")
+
+    output_group.add_argument(
+        "-xs",
+        "--to-xmls",
+        action='store_true',
+        help="Outputs ISO19139 XML files.")
+
     output_group.add_argument(
         "-ogm",
         "--to-opengeometadata",
@@ -608,14 +649,19 @@ def main():
               Valid values are one of the following : \
               iowa, illinois, mich, minn, msu, psu, purdue, umd, wisc")
 
+#     group.add_argument(
+#         "-dc",
+#         "--delete-records-collection",
+#         help="Delete records for an collection.\n\
+#               Enter the collection name")
+
     args = parser.parse_args()
     interface = CSWToGeoBlacklight(
         config.SOLR_URL, config.SOLR_USERNAME, config.SOLR_PASSWORD,
         config.CSW_URL, config.CSW_USER, config.CSW_PASSWORD,
         USERS_INSTITUTIONS_MAP, INST=args.provenance_institution,
         TO_CSV=args.to_csv, TO_JSON=args.to_json, TO_XML=args.to_xml,
-        TO_OGM=args.to_opengeometadata, COLLECTION=args.collection,
-        RECURSIVE=args.recursive, MD_LINK=args.metadata_link)
+        TO_OGM=args.to_opengeometadata, RECURSIVE=args.recursive, MD_LINK=args.metadata_link)
 
     if args.path_to_csv:
         interface.records_by_csv(args.path_to_csv)
@@ -631,6 +677,9 @@ def main():
 
     elif args.delete_records_institution:
         interface.delete_records_institution(args.delete_records_institution)
+
+#     elif args.delete_records_collection:
+#         interface.delete_records_collection(args.delete_records_collection)
 
     elif args.add_json:
         interface.add_json(args.add_json)

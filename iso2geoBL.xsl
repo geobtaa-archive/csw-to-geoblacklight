@@ -17,7 +17,7 @@
   <xsl:param name="institution"/>
   
   <!-- Collection name is provided as kwarg in the csw-to-geoblacklight.py script -->
-  <xsl:param name="collection"/>
+<!--  <xsl:param name="collection"/>-->
 
 
   <xsl:template match="/">
@@ -47,7 +47,7 @@
     <xsl:variable name="format">
       <xsl:choose>
       <xsl:when test="contains(gmd:MD_Metadata/gmd:distributionInfo/gmd:MD_Distribution/gmd:distributionFormat/gmd:MD_Format/gmd:name, 'Raster Dataset')">
-        <xsl:text>GeoTIFF</xsl:text>
+        <xsl:text>Raster Dataset</xsl:text>
       </xsl:when>
         <xsl:when test="contains(gmd:MD_Metadata/gmd:distributionInfo/gmd:MD_Distribution/gmd:distributionFormat/gmd:MD_Format/gmd:name, 'GeoTIFF')">
           <xsl:text>GeoTIFF</xsl:text>
@@ -61,8 +61,14 @@
         <xsl:when test="contains(gmd:MD_Metadata/gmd:distributionInfo/gmd:MD_Distribution/gmd:distributionFormat/gmd:MD_Format/gmd:name, 'Shapefile')">
           <xsl:text>Shapefile</xsl:text>
         </xsl:when>
+        <xsl:when test="contains(gmd:MD_Metadata/gmd:distributionInfo/gmd:MD_Distribution/gmd:distributionFormat/gmd:MD_Format/gmd:name, 'shapefile')">
+          <xsl:text>Shapefile</xsl:text>
+        </xsl:when>
         <xsl:when test="contains(gmd:MD_Metadata/gmd:distributionInfo/gmd:MD_Distribution/gmd:distributionFormat/gmd:MD_Format/gmd:name, 'Geodatabase')">
           <xsl:text>Geodatabase</xsl:text>
+        </xsl:when>
+        <xsl:when test="contains(gmd:MD_Metadata/gmd:distributionInfo/gmd:MD_Distribution/gmd:distributionFormat/gmd:MD_Format/gmd:name, 'Text')">
+          <xsl:text>Text</xsl:text>
         </xsl:when>
         <!-- otherwise, if it's vector, just call it shapefile and move on. Obv less than ideal
         <xsl:when test="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:spatialRepresentationType/gmd:MD_SpatialRepresentationTypeCode/@codeListValue='vector'">
@@ -140,13 +146,17 @@
 
     <xsl:text>{</xsl:text>
       <xsl:text>"uuid": "</xsl:text><xsl:value-of select="$uuid"/><xsl:text>",</xsl:text>
-      <xsl:text>"layer_geom_type_s": "</xsl:text>
+    
+<!--      <xsl:text>"layer_geom_type_s": "</xsl:text>
     
     <xsl:choose>
       <xsl:when test="$format='GeoTIFF'">
         <xsl:text>Raster</xsl:text>
       </xsl:when>
       <xsl:when test="$format='ArcGRID'">
+        <xsl:text>Raster</xsl:text>
+      </xsl:when>
+      <xsl:when test="$format='Raster Dataset'">
         <xsl:text>Raster</xsl:text>
       </xsl:when>
       <xsl:when test="$format='File'">
@@ -204,13 +214,10 @@
       <xsl:otherwise>
         <xsl:text>Mixed</xsl:text>
       </xsl:otherwise>
-    </xsl:choose>
-    
-    
-    
-    
+    </xsl:choose>-->
 
-    <xsl:text>",</xsl:text>
+
+<!--    <xsl:text>",</xsl:text>-->
                
          <!-- not needed  
            <xsl:when test="gmd:MD_Metadata/gmd:spatialRepresentationInfo/gmd:MD_VectorSpatialRepresentation/gmd:geometricObjects/gmd:MD_GeometricObjects/gmd:geometricObjectType/gmd:MD_GeometricObjectTypeCode[@codeListValue='grid']">
@@ -220,11 +227,13 @@
     
          
 
-      <xsl:text>"dc_identifier_s": "</xsl:text><xsl:value-of select="$uuid"/><xsl:text>",</xsl:text>
-      <xsl:text>"dc_title_s": "</xsl:text><xsl:value-of select="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title"/><xsl:text>",</xsl:text>
+    <xsl:text>"dc_identifier_s": "</xsl:text><xsl:value-of select="$uuid"/><xsl:text>",</xsl:text>
+    <xsl:text>"dc_title_s": "</xsl:text><xsl:value-of select="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title"/><xsl:text>",</xsl:text>
+    <xsl:text>"dct_isPartOf_sm": "</xsl:text><xsl:value-of select="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:collectiveTitle"/><xsl:text>",</xsl:text>
+    <xsl:text>"layer_geom_type_s": "</xsl:text><xsl:value-of select="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:otherCitationDetails"/><xsl:text>",</xsl:text>
       <!--<xsl:text>"dc_description_s": "</xsl:text><xsl:value-of select="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:abstract"/><xsl:text>",</xsl:text>-->
-      <xsl:text>"dc_description_s": "</xsl:text><xsl:value-of select="translate(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:abstract,$vQ, '\'+ $vQ)"/><xsl:text>",</xsl:text>
-      <xsl:text>"dc_rights_s": "</xsl:text>
+    <xsl:text>"dc_description_s": "</xsl:text><xsl:value-of select="translate(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:abstract,$vQ, '\'+ $vQ)"/><xsl:text>",</xsl:text>
+    <xsl:text>"dc_rights_s": "</xsl:text>
           <xsl:choose>
             <xsl:when test="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:resourceConstraints/gmd:MD_LegalConstraints/gmd:accessConstraints/gmd:MD_RestrictionCode[@codeListValue='restricted']">
               <xsl:text>Restricted</xsl:text>
@@ -262,7 +271,8 @@
             </xsl:otherwise>
           </xsl:choose><xsl:text>","dct_provenance_s": "</xsl:text>
       <xsl:value-of select="$institution"/>
-      <xsl:text>","layer_id_s": "</xsl:text>
+      
+    <xsl:text>","layer_id_s": "</xsl:text>
         <xsl:value-of select="$layer_id"/>
       <xsl:text>",</xsl:text>
       <xsl:text>"layer_slug_s": "</xsl:text>
@@ -270,6 +280,19 @@
         <xsl:text>-</xsl:text>
         <xsl:value-of select="$identifier"/>
       <xsl:text>",</xsl:text>
+    
+    
+    <xsl:choose>
+      <xsl:when test="gmd:MD_Metadata/gmd:parentIdentifier">    
+    <xsl:text>"dc_source_sm": "</xsl:text>
+      <xsl:value-of select="$institution"/>
+      <xsl:text>-urn-</xsl:text>
+      <xsl:value-of select="gmd:MD_Metadata/gmd:parentIdentifier"/>
+    <xsl:text>",</xsl:text>
+      </xsl:when>        
+    </xsl:choose>        
+    
+    
     <!-- TODO should this look to 'revision' under citation rather than the dateStamp? -->
         <xsl:choose>
           <xsl:when test="gmd:MD_Metadata/gmd:dateStamp/gco:DateTime">
@@ -635,11 +658,11 @@
 
         <!-- collection -->
       <!-- using script provided param as of 6/23/2016 krd -->
-     <xsl:if test="$collection">
+<!--     <xsl:if test="$collection">
        <xsl:text>"dct_isPartOf_sm": "</xsl:text>
        <xsl:value-of select="$collection"/>
        <xsl:text>", </xsl:text>
-     </xsl:if>
+     </xsl:if>-->
     
     <!--<xsl:if test="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation/gmd:associationType/gmd:DS_AssociationTypeCode[@codeListValue='largerWorkCitation'] or gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:collectiveTitle">
       <xsl:text>"dct_isPartOf_sm": "</xsl:text>
