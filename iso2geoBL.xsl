@@ -17,7 +17,7 @@
   <xsl:param name="institution"/>
   
   <!-- Collection name is provided as kwarg in the csw-to-geoblacklight.py script -->
-  <xsl:param name="collection"/>
+<!--  <xsl:param name="collection"/>-->
 
 
   <xsl:template match="/">
@@ -47,21 +47,37 @@
     <xsl:variable name="format">
       <xsl:choose>
       <xsl:when test="contains(gmd:MD_Metadata/gmd:distributionInfo/gmd:MD_Distribution/gmd:distributionFormat/gmd:MD_Format/gmd:name, 'Raster Dataset')">
-        <xsl:text>GeoTIFF</xsl:text>
+        <xsl:text>Raster Dataset</xsl:text>
       </xsl:when>
         <xsl:when test="contains(gmd:MD_Metadata/gmd:distributionInfo/gmd:MD_Distribution/gmd:distributionFormat/gmd:MD_Format/gmd:name, 'GeoTIFF')">
           <xsl:text>GeoTIFF</xsl:text>
         </xsl:when>
         <xsl:when test="contains(gmd:MD_Metadata/gmd:distributionInfo/gmd:MD_Distribution/gmd:distributionFormat/gmd:MD_Format/gmd:name, 'Arc')">
-          <xsl:text>GeoTIFF</xsl:text>
+          <xsl:text>ArcGRID</xsl:text>
+        </xsl:when>
+        <xsl:when test="contains(gmd:MD_Metadata/gmd:distributionInfo/gmd:MD_Distribution/gmd:distributionFormat/gmd:MD_Format/gmd:name, 'ArcGRID')">
+          <xsl:text>ArcGRID</xsl:text>
         </xsl:when>
         <xsl:when test="contains(gmd:MD_Metadata/gmd:distributionInfo/gmd:MD_Distribution/gmd:distributionFormat/gmd:MD_Format/gmd:name, 'Shapefile')">
           <xsl:text>Shapefile</xsl:text>
         </xsl:when>
-        <!-- otherwise, if it's vector, just call it shapefile and move on. Obv less than ideal -->
+        <xsl:when test="contains(gmd:MD_Metadata/gmd:distributionInfo/gmd:MD_Distribution/gmd:distributionFormat/gmd:MD_Format/gmd:name, 'shapefile')">
+          <xsl:text>Shapefile</xsl:text>
+        </xsl:when>
+        <xsl:when test="contains(gmd:MD_Metadata/gmd:distributionInfo/gmd:MD_Distribution/gmd:distributionFormat/gmd:MD_Format/gmd:name, 'Geodatabase')">
+          <xsl:text>Geodatabase</xsl:text>
+        </xsl:when>
+        <xsl:when test="contains(gmd:MD_Metadata/gmd:distributionInfo/gmd:MD_Distribution/gmd:distributionFormat/gmd:MD_Format/gmd:name, 'Text')">
+          <xsl:text>Text</xsl:text>
+        </xsl:when>
+        <!-- otherwise, if it's vector, just call it shapefile and move on. Obv less than ideal
         <xsl:when test="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:spatialRepresentationType/gmd:MD_SpatialRepresentationTypeCode/@codeListValue='vector'">
           <xsl:text>Shapefile</xsl:text>
         </xsl:when>
+         -->
+        <xsl:otherwise>
+          <xsl:text>File</xsl:text>
+        </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
 
@@ -130,50 +146,94 @@
 
     <xsl:text>{</xsl:text>
       <xsl:text>"uuid": "</xsl:text><xsl:value-of select="$uuid"/><xsl:text>",</xsl:text>
-      <xsl:text>"layer_geom_type_s": "</xsl:text>
-         <xsl:choose>
-           <xsl:when test="gmd:MD_Metadata/gmd:spatialRepresentationInfo/gmd:MD_VectorSpatialRepresentation/gmd:geometricObjects/gmd:MD_GeometricObjects/gmd:geometricObjectType/gmd:MD_GeometricObjectTypeCode">
-             <xsl:choose>
-               <xsl:when test="contains(gmd:MD_Metadata/gmd:spatialRepresentationInfo/gmd:MD_VectorSpatialRepresentation/gmd:geometricObjects/gmd:MD_GeometricObjects/gmd:geometricObjectType/gmd:MD_GeometricObjectTypeCode/@codeListValue, 'point')">
-                    <xsl:text>Point</xsl:text>
-                  </xsl:when>
-               <xsl:when test="contains(gmd:MD_Metadata/gmd:spatialRepresentationInfo/gmd:MD_VectorSpatialRepresentation/gmd:geometricObjects/gmd:MD_GeometricObjects/gmd:geometricObjectType/gmd:MD_GeometricObjectTypeCode/@codeListValue, 'curve')">
-                    <xsl:text>Line</xsl:text>
-                  </xsl:when>
-               <xsl:when test="contains(gmd:MD_Metadata/gmd:spatialRepresentationInfo/gmd:MD_VectorSpatialRepresentation/gmd:geometricObjects/gmd:MD_GeometricObjects/gmd:geometricObjectType/gmd:MD_GeometricObjectTypeCode/@codeListValue, 'surface')">
-                    <xsl:text>Polygon</xsl:text>
-               </xsl:when>
-               <xsl:when test="contains(gmd:MD_Metadata/gmd:spatialRepresentationInfo/gmd:MD_VectorSpatialRepresentation/gmd:geometricObjects/gmd:MD_GeometricObjects/gmd:geometricObjectType/gmd:MD_GeometricObjectTypeCode/@codeListValue, 'composite')">
-                 <xsl:text>Mixed</xsl:text>
-               </xsl:when>
-               <xsl:when test="contains(gmd:MD_Metadata/gmd:spatialRepresentationInfo/gmd:MD_VectorSpatialRepresentation/gmd:geometricObjects/gmd:MD_GeometricObjects/gmd:geometricObjectType/gmd:MD_GeometricObjectTypeCode/@codeListValue, 'complex')">
-                 <xsl:text>Mixed</xsl:text>
-               </xsl:when>
-               <!-- Look for polygon in abstract. maybe a terrible idea -->
-               <xsl:when test="contains(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:abstract/gco:CharacterString, 'polygon') or contains(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:abstract/gco:CharacterString, 'Polygon')">
-                 <xsl:text>Polygon</xsl:text>
-               </xsl:when>
-               <xsl:otherwise>
-                 <xsl:text>Mixed</xsl:text>
-               </xsl:otherwise>
-             </xsl:choose>
-           </xsl:when>
-           
+    
+<!--      <xsl:text>"layer_geom_type_s": "</xsl:text>
+    
+    <xsl:choose>
+      <xsl:when test="$format='GeoTIFF'">
+        <xsl:text>Raster</xsl:text>
+      </xsl:when>
+      <xsl:when test="$format='ArcGRID'">
+        <xsl:text>Raster</xsl:text>
+      </xsl:when>
+      <xsl:when test="$format='Raster Dataset'">
+        <xsl:text>Raster</xsl:text>
+      </xsl:when>
+      <xsl:when test="$format='File'">
+        <xsl:text>Mixed</xsl:text>
+      </xsl:when>
+      <xsl:when test="$format='Shapefile'">
+        <xsl:choose>
+          
+              <xsl:when test="contains(gmd:MD_Metadata/gmd:spatialRepresentationInfo/gmd:MD_VectorSpatialRepresentation/gmd:geometricObjects/gmd:MD_GeometricObjects/gmd:geometricObjectType/gmd:MD_GeometricObjectTypeCode/@codeListValue, 'point')">
+                <xsl:text>Point</xsl:text>
+              </xsl:when>
+              <xsl:when test="contains(gmd:MD_Metadata/gmd:spatialRepresentationInfo/gmd:MD_VectorSpatialRepresentation/gmd:geometricObjects/gmd:MD_GeometricObjects/gmd:geometricObjectType/gmd:MD_GeometricObjectTypeCode/@codeListValue, 'curve')">
+                <xsl:text>Line</xsl:text>
+              </xsl:when>
+              <xsl:when test="contains(gmd:MD_Metadata/gmd:spatialRepresentationInfo/gmd:MD_VectorSpatialRepresentation/gmd:geometricObjects/gmd:MD_GeometricObjects/gmd:geometricObjectType/gmd:MD_GeometricObjectTypeCode/@codeListValue, 'surface')">
+                <xsl:text>Polygon</xsl:text>
+              </xsl:when>
+              <xsl:when test="contains(gmd:MD_Metadata/gmd:spatialRepresentationInfo/gmd:MD_VectorSpatialRepresentation/gmd:geometricObjects/gmd:MD_GeometricObjects/gmd:geometricObjectType/gmd:MD_GeometricObjectTypeCode/@codeListValue, 'composite')">
+                <xsl:text>Mixed</xsl:text>
+              </xsl:when>
+              <xsl:when test="contains(gmd:MD_Metadata/gmd:spatialRepresentationInfo/gmd:MD_VectorSpatialRepresentation/gmd:geometricObjects/gmd:MD_GeometricObjects/gmd:geometricObjectType/gmd:MD_GeometricObjectTypeCode/@codeListValue, 'complex')">
+                <xsl:text>Mixed</xsl:text>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:text>Mixed</xsl:text>
+              </xsl:otherwise>
+        </xsl:choose>
+      </xsl:when>
+      <xsl:when test="$format='Geodatabase'">
+        <xsl:choose>
+          
+          <xsl:when test="contains(gmd:MD_Metadata/gmd:spatialRepresentationInfo/gmd:MD_VectorSpatialRepresentation/gmd:geometricObjects/gmd:MD_GeometricObjects/gmd:geometricObjectType/gmd:MD_GeometricObjectTypeCode/@codeListValue, 'point')">
+            <xsl:text>Point</xsl:text>
+          </xsl:when>
+          <xsl:when test="contains(gmd:MD_Metadata/gmd:spatialRepresentationInfo/gmd:MD_VectorSpatialRepresentation/gmd:geometricObjects/gmd:MD_GeometricObjects/gmd:geometricObjectType/gmd:MD_GeometricObjectTypeCode/@codeListValue, 'curve')">
+            <xsl:text>Line</xsl:text>
+          </xsl:when>
+          <xsl:when test="contains(gmd:MD_Metadata/gmd:spatialRepresentationInfo/gmd:MD_VectorSpatialRepresentation/gmd:geometricObjects/gmd:MD_GeometricObjects/gmd:geometricObjectType/gmd:MD_GeometricObjectTypeCode/@codeListValue, 'surface')">
+            <xsl:text>Polygon</xsl:text>
+          </xsl:when>
+          <xsl:when test="contains(gmd:MD_Metadata/gmd:spatialRepresentationInfo/gmd:MD_VectorSpatialRepresentation/gmd:geometricObjects/gmd:MD_GeometricObjects/gmd:geometricObjectType/gmd:MD_GeometricObjectTypeCode/@codeListValue, 'composite')">
+            <xsl:text>Mixed</xsl:text>
+          </xsl:when>
+          <xsl:when test="contains(gmd:MD_Metadata/gmd:spatialRepresentationInfo/gmd:MD_VectorSpatialRepresentation/gmd:geometricObjects/gmd:MD_GeometricObjects/gmd:geometricObjectType/gmd:MD_GeometricObjectTypeCode/@codeListValue, 'complex')">
+            <xsl:text>Mixed</xsl:text>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:text>Mixed</xsl:text>
+          </xsl:otherwise>
+          
+        </xsl:choose>
+       </xsl:when>
+          
+     
+      <xsl:otherwise>
+        <xsl:text>Mixed</xsl:text>
+      </xsl:otherwise>
+    </xsl:choose>-->
+
+
+<!--    <xsl:text>",</xsl:text>-->
+               
+         <!-- not needed  
            <xsl:when test="gmd:MD_Metadata/gmd:spatialRepresentationInfo/gmd:MD_VectorSpatialRepresentation/gmd:geometricObjects/gmd:MD_GeometricObjects/gmd:geometricObjectType/gmd:MD_GeometricObjectTypeCode[@codeListValue='grid']">
              <xsl:text>Raster</xsl:text>
            </xsl:when>
-           
-           
-           <xsl:otherwise>
-             <xsl:text>Mixed</xsl:text>
-           </xsl:otherwise>
-         </xsl:choose><xsl:text>",</xsl:text>
+           -->
+    
+         
 
-      <xsl:text>"dc_identifier_s": "</xsl:text><xsl:value-of select="$uuid"/><xsl:text>",</xsl:text>
-      <xsl:text>"dc_title_s": "</xsl:text><xsl:value-of select="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title"/><xsl:text>",</xsl:text>
+    <xsl:text>"dc_identifier_s": "</xsl:text><xsl:value-of select="$uuid"/><xsl:text>",</xsl:text>
+    <xsl:text>"dc_title_s": "</xsl:text><xsl:value-of select="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title"/><xsl:text>",</xsl:text>
+    <xsl:text>"dct_isPartOf_sm": "</xsl:text><xsl:value-of select="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:collectiveTitle"/><xsl:text>",</xsl:text>
+    <xsl:text>"layer_geom_type_s": "</xsl:text><xsl:value-of select="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:otherCitationDetails"/><xsl:text>",</xsl:text>
       <!--<xsl:text>"dc_description_s": "</xsl:text><xsl:value-of select="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:abstract"/><xsl:text>",</xsl:text>-->
-      <xsl:text>"dc_description_s": "</xsl:text><xsl:value-of select="translate(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:abstract,$vQ, '\'+ $vQ)"/><xsl:text>",</xsl:text>
-      <xsl:text>"dc_rights_s": "</xsl:text>
+    <xsl:text>"dc_description_s": "</xsl:text><xsl:value-of select="translate(gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:abstract,$vQ, '\'+ $vQ)"/><xsl:text>",</xsl:text>
+    <xsl:text>"dc_rights_s": "</xsl:text>
           <xsl:choose>
             <xsl:when test="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:resourceConstraints/gmd:MD_LegalConstraints/gmd:accessConstraints/gmd:MD_RestrictionCode[@codeListValue='restricted']">
               <xsl:text>Restricted</xsl:text>
@@ -211,7 +271,8 @@
             </xsl:otherwise>
           </xsl:choose><xsl:text>","dct_provenance_s": "</xsl:text>
       <xsl:value-of select="$institution"/>
-      <xsl:text>","layer_id_s": "</xsl:text>
+      
+    <xsl:text>","layer_id_s": "</xsl:text>
         <xsl:value-of select="$layer_id"/>
       <xsl:text>",</xsl:text>
       <xsl:text>"layer_slug_s": "</xsl:text>
@@ -219,6 +280,19 @@
         <xsl:text>-</xsl:text>
         <xsl:value-of select="$identifier"/>
       <xsl:text>",</xsl:text>
+    
+    
+    <xsl:choose>
+      <xsl:when test="gmd:MD_Metadata/gmd:parentIdentifier">    
+    <xsl:text>"dc_source_sm": "</xsl:text>
+      <xsl:value-of select="$institution"/>
+      <xsl:text>-urn-</xsl:text>
+      <xsl:value-of select="gmd:MD_Metadata/gmd:parentIdentifier"/>
+    <xsl:text>",</xsl:text>
+      </xsl:when>        
+    </xsl:choose>        
+    
+    
     <!-- TODO should this look to 'revision' under citation rather than the dateStamp? -->
         <xsl:choose>
           <xsl:when test="gmd:MD_Metadata/gmd:dateStamp/gco:DateTime">
@@ -292,6 +366,7 @@
           <xsl:when test="ancestor-or-self::*/gmd:individualName and not(ancestor-or-self::*/gmd:organisationName)">
             <xsl:for-each select="ancestor-or-self::*/gmd:individualName">
               <xsl:text>"</xsl:text>
+              
               <xsl:value-of select="ancestor-or-self::*/gmd:individualName"/>
               <xsl:text>"</xsl:text>
               <xsl:if test="position() != last()">
@@ -339,6 +414,8 @@
     <!-- topic category -->
     <xsl:if test="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:topicCategory/gmd:MD_TopicCategoryCode">
       <xsl:text>"dc_subject_sm": [</xsl:text>
+      
+      <!-- original
       <xsl:for-each select="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:topicCategory/gmd:MD_TopicCategoryCode">
         <xsl:text>"</xsl:text>
         <xsl:value-of select="."/>
@@ -351,6 +428,106 @@
         </xsl:if>
       </xsl:for-each>
     </xsl:if>
+    -->
+    
+    <xsl:for-each select="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:topicCategory">
+    
+      <xsl:choose>
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'biota')"> 
+          <xsl:text>"Biota"</xsl:text>        
+        </xsl:when>
+        
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'boundaries')">
+          <xsl:text>"Boundaries"</xsl:text>        
+        </xsl:when>
+        
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'climatologyMeteorologyAtmosphere')">     
+          <xsl:text>"Climatology, Meteorology and Atmosphere"</xsl:text>        
+        </xsl:when>
+        
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'economy')">          
+          <xsl:text>"Economy"</xsl:text>        
+        </xsl:when>
+        
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'elevation')">        
+          <xsl:text>"Elevation"</xsl:text>        
+        </xsl:when>
+        
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'environment')">         
+          <xsl:text>"Environment"</xsl:text>        
+        </xsl:when>
+        
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'farming')">        
+          <xsl:text>"Farming"</xsl:text>        
+        </xsl:when>
+        
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'geoscientificInformation')">        
+          <xsl:text>"Geoscientific Information"</xsl:text>        
+        </xsl:when>
+        
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'health')">        
+          <xsl:text>"Health"</xsl:text>        
+        </xsl:when>
+        
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'imageryBaseMapsEarthCover')">        
+          <xsl:text>"Imagery and Base Maps"</xsl:text>        
+        </xsl:when>
+        
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'inlandWaters')">        
+          <xsl:text>"Inland Waters"</xsl:text>        
+        </xsl:when>
+        
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'intelligenceMilitary')">        
+          <xsl:text>"Intelligence and Military"</xsl:text>        
+        </xsl:when>
+        
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'location')">        
+          <xsl:text>"Location"</xsl:text>        
+        </xsl:when>
+        
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'oceans')">        
+          <xsl:text>"Oceans"</xsl:text>        
+        </xsl:when>
+        
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'planningCadastre')">        
+          <xsl:text>"Planning and Cadastral"</xsl:text>        
+        </xsl:when>
+ 
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'society')">        
+          <xsl:text>"Society"</xsl:text>        
+        </xsl:when>
+        
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'structure')">        
+          <xsl:text>"Structure"</xsl:text>        
+        </xsl:when>
+        
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'transportation')">        
+          <xsl:text>"Transportation"</xsl:text>        
+        </xsl:when>
+        
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'utilitiesCommunication')">        
+          <xsl:text>"Utilities and Communication"</xsl:text>        
+        </xsl:when>
+     
+      
+        <xsl:otherwise>
+          <xsl:text>"</xsl:text>
+          <xsl:value-of select="gmd:MD_TopicCategoryCode"/>
+          <xsl:text>"</xsl:text>
+        </xsl:otherwise>
+      
+      </xsl:choose>
+     
+      <xsl:if test="position() != last()">
+        <xsl:text>,</xsl:text>
+      </xsl:if>
+      <xsl:if test="position() = last() and /gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:type/gmd:MD_KeywordTypeCode[@codeListValue='theme']">
+        <xsl:text>,</xsl:text>
+      </xsl:if>
+      
+   </xsl:for-each>
+  </xsl:if>
+
 
       <!-- theme keywords -->
       <xsl:if test="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:descriptiveKeywords/gmd:MD_Keywords/gmd:type/gmd:MD_KeywordTypeCode[@codeListValue='theme']">
@@ -481,11 +658,11 @@
 
         <!-- collection -->
       <!-- using script provided param as of 6/23/2016 krd -->
-     <xsl:if test="$collection">
+<!--     <xsl:if test="$collection">
        <xsl:text>"dct_isPartOf_sm": "</xsl:text>
        <xsl:value-of select="$collection"/>
        <xsl:text>", </xsl:text>
-     </xsl:if>
+     </xsl:if>-->
     
     <!--<xsl:if test="gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:aggregationInfo/gmd:MD_AggregateInformation/gmd:associationType/gmd:DS_AssociationTypeCode[@codeListValue='largerWorkCitation'] or gmd:MD_Metadata/gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:collectiveTitle">
       <xsl:text>"dct_isPartOf_sm": "</xsl:text>
@@ -607,9 +784,11 @@
               </xsl:when>
             </xsl:choose>
           </xsl:when>
+          <!--
           <xsl:otherwise>
             <xsl:text>"solr_year_i": 9999</xsl:text>
           </xsl:otherwise>
+          -->
         </xsl:choose>
 
     <!-- let's try parsing references!!!!!!!! YEEEESSSS -->
