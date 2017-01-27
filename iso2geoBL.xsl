@@ -52,6 +52,12 @@
         <xsl:when test="contains(gmd:MD_Metadata/gmd:distributionInfo/gmd:MD_Distribution/gmd:distributionFormat/gmd:MD_Format/gmd:name, 'GeoTIFF')">
           <xsl:text>GeoTIFF</xsl:text>
         </xsl:when>
+        <xsl:when test="contains(gmd:MD_Metadata/gmd:distributionInfo/gmd:MD_Distribution/gmd:distributionFormat/gmd:MD_Format/gmd:name, 'TIFF')">
+          <xsl:text>TIFF</xsl:text>
+        </xsl:when>
+        <xsl:when test="contains(gmd:MD_Metadata/gmd:distributionInfo/gmd:MD_Distribution/gmd:distributionFormat/gmd:MD_Format/gmd:name, 'JPEG')">
+          <xsl:text>JPEGF</xsl:text>
+        </xsl:when>
         <xsl:when test="contains(gmd:MD_Metadata/gmd:distributionInfo/gmd:MD_Distribution/gmd:distributionFormat/gmd:MD_Format/gmd:name, 'Arc')">
           <xsl:text>ArcGRID</xsl:text>
         </xsl:when>
@@ -470,6 +476,10 @@
         </xsl:when>
         
         <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'imageryBaseMapsEarthCover')">        
+          <xsl:text>"Imagery and Base Maps"</xsl:text>        
+        </xsl:when>
+        
+        <xsl:when test="contains(gmd:MD_TopicCategoryCode, 'Imagery base maps earth cover')">        
           <xsl:text>"Imagery and Base Maps"</xsl:text>        
         </xsl:when>
         
