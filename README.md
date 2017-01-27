@@ -1,5 +1,5 @@
 # csw-to-geoblacklight
-Pull ISO 19139 metadata from a CSW and populate a GeoBlacklight Solr index, among other things
+Pull ISO 19139 metadata from a CSW and populate a GeoBlacklight Solr index, and export to opengeometadata
 
 ## Requirements
 Ought to work with Python 2.7+ and 3+
