@@ -2,13 +2,14 @@
 
 ## Pre-reqs
 
-Python 2.7
-Microsoft Visual C++ Compiler for Python Download and install from here: https://www.microsoft.com/en-us/download/details.aspx?id=44266
++ Python 2.7
++ Microsoft Visual C++ Compiler for Python (Download and install from here: https://www.microsoft.com/en-us/download/details.aspx?id=44266)
 
-## Environment variables to set
-path to Python 2.7
-path to Python Scripts directory
-(How to add an environment variable in Windows: https://www.computerhope.com/issues/ch000549.htm)
+## Environment variables to set 
++ path to Python 2.7
++ path to Python Scripts directory
+
+How to add an environment variable in Windows: https://www.computerhope.com/issues/ch000549.htm)
 
 
 ## Install modules required for CSW-to-geoblacklight script
