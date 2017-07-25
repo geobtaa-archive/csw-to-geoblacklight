@@ -24,3 +24,6 @@ path to Python Scripts directory
 Download and run the pipreqs.py file using: python <path-to-file>\pipreqs.py
 
 + Note: pipreqs.py assumes default Python 2.7 configuration, and that requirements.txt is installed in C:\Python27\Scripts\csw-to-geoblacklight-master\  - Make any necessary changes to paths before running the script.
+
+
+Thank you to Cole Meyer from UMN OIT for these instructions.
